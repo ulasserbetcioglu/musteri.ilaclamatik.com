@@ -381,8 +381,6 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
                 >
                   <Eye size={16} />
                   Yeni Sekmede Aç
-                </a>
-                
                   href={selectedImage.file_url}
                   download
                   className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-medium"
