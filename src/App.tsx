@@ -21,6 +21,12 @@ import { CertificatesEditor } from './components/modules/Certificates/Editor';
 import { CertificatesPreview } from './components/modules/Certificates/Preview';
 import { FumigationLicenseEditor } from './components/modules/FumigationLicense/Editor';
 import { FumigationLicensePreview } from './components/modules/FumigationLicense/Preview';
+import { ProductMSDSEditor } from './components/modules/ProductMSDS/Editor';
+import { ProductMSDSPreview } from './components/modules/ProductMSDS/Preview';
+import { WasteDisposalEditor } from './components/modules/WasteDisposal/Editor';
+import { WasteDisposalPreview } from './components/modules/WasteDisposal/Preview';
+import { InsurancePolicyEditor } from './components/modules/InsurancePolicy/Editor';
+import { InsurancePolicyPreview } from './components/modules/InsurancePolicy/Preview';
 import { DocumentAssignment } from './components/admin/DocumentAssignment';
 import { useCustomerData } from './hooks/useCustomerData';
 import type { ActiveTab, DocumentSettings } from './types';
@@ -85,6 +91,24 @@ export default function MentorModule() {
     yayinTarihi: '01.01.2024'
   });
 
+  const [settings43b, setSettings43b] = useState<DocumentSettings>({
+    dokumanNo: '4.3b',
+    revizyonNo: '00',
+    yayinTarihi: '01.01.2024'
+  });
+
+  const [settings54, setSettings54] = useState<DocumentSettings>({
+    dokumanNo: '5.4',
+    revizyonNo: '00',
+    yayinTarihi: '01.01.2024'
+  });
+
+  const [settings61, setSettings61] = useState<DocumentSettings>({
+    dokumanNo: '6.1',
+    revizyonNo: '00',
+    yayinTarihi: '01.01.2024'
+  });
+
   const handlePrint = () => {
     window.print();
   };
@@ -119,6 +143,18 @@ export default function MentorModule() {
 
   const handleSettings33Change = (updates: Partial<DocumentSettings>) => {
     setSettings33(prev => ({ ...prev, ...updates }));
+  };
+
+  const handleSettings43bChange = (updates: Partial<DocumentSettings>) => {
+    setSettings43b(prev => ({ ...prev, ...updates }));
+  };
+
+  const handleSettings54Change = (updates: Partial<DocumentSettings>) => {
+    setSettings54(prev => ({ ...prev, ...updates }));
+  };
+
+  const handleSettings61Change = (updates: Partial<DocumentSettings>) => {
+    setSettings61(prev => ({ ...prev, ...updates }));
   };
 
   // Show login page if not authenticated
@@ -168,7 +204,9 @@ export default function MentorModule() {
               {activeTab === '3.1' && 'İzin ve Ruhsatlar Düzenle'}
               {activeTab === '3.2' && 'Sertifikalar Düzenle'}
               {activeTab === '3.3' && 'Fumigasyon Ruhsatı Düzenle'}
-              {/* Add other module titles */}
+              {activeTab === '4.3b' && 'Sigorta Poliçesi Düzenle'}
+              {activeTab === '5.4' && 'Ürün Ruhsat & MSDS Düzenle'}
+              {activeTab === '6.1' && 'Atık İmha Belgesi Düzenle'}
             </h2>
 
             {activeTab === '0.1' && (
@@ -232,7 +270,24 @@ export default function MentorModule() {
                 onSettingsChange={handleSettings33Change}
               />
             )}
-            {/* Add other module editors */}
+            {activeTab === '4.3b' && (
+              <InsurancePolicyEditor
+                settings={settings43b}
+                onSettingsChange={handleSettings43bChange}
+              />
+            )}
+            {activeTab === '5.4' && (
+              <ProductMSDSEditor
+                settings={settings54}
+                onSettingsChange={handleSettings54Change}
+              />
+            )}
+            {activeTab === '6.1' && (
+              <WasteDisposalEditor
+                settings={settings61}
+                onSettingsChange={handleSettings61Change}
+              />
+            )}
           </div>
         )}
 
@@ -269,7 +324,15 @@ export default function MentorModule() {
           {activeTab === '3.3' && (
             <FumigationLicensePreview settings={settings33} />
           )}
-          {/* Add other module previews */}
+          {activeTab === '4.3b' && (
+            <InsurancePolicyPreview settings={settings43b} />
+          )}
+          {activeTab === '5.4' && (
+            <ProductMSDSPreview settings={settings54} />
+          )}
+          {activeTab === '6.1' && (
+            <WasteDisposalPreview settings={settings61} />
+          )}
         </div>
       </main>
 
