@@ -8,6 +8,12 @@ import { CustomerInfoPreview } from '../modules/CustomerInfo/Preview';
 import { IPMContractPreview } from '../modules/IPMContract/Preview';
 import { ActivityFileContentPreview } from '../modules/ActivityFileContent/Preview';
 import { BranchInfoPreview } from '../modules/BranchInfo/Preview';
+import { PermitsPreview } from '../modules/Permits/Preview';
+import { CertificatesPreview } from '../modules/Certificates/Preview';
+import { FumigationLicensePreview } from '../modules/FumigationLicense/Preview';
+import { InsurancePolicyPreview } from '../modules/InsurancePolicy/Preview';
+import { ProductMSDSPreview } from '../modules/ProductMSDS/Preview';
+import { WasteDisposalPreview } from '../modules/WasteDisposal/Preview';
 
 interface CustomerDocument {
   id: string;
@@ -186,6 +192,9 @@ export function ActivityFilesPage({ user, onLogout, onNavigate }: ActivityFilesP
   const renderPreview = () => {
     if (!selectedDoc || !customerData) return null;
 
+    const customerName = customerData.ticariUnvan || 'Müşteri';
+    const customerId = selectedDoc.customer_id || selectedDoc.branch_id;
+
     switch (selectedDoc.document_type) {
       case '1.1':
         return (
@@ -214,6 +223,49 @@ export function ActivityFilesPage({ user, onLogout, onNavigate }: ActivityFilesP
           <IPMContractPreview
             customerData={customerData}
             settings={documentSettings}
+          />
+        );
+      case '3.1':
+        return (
+          <PermitsPreview
+            settings={documentSettings}
+            customerName={customerName}
+          />
+        );
+      case '3.2':
+        return (
+          <CertificatesPreview
+            settings={documentSettings}
+            customerName={customerName}
+          />
+        );
+      case '3.3':
+        return (
+          <FumigationLicensePreview
+            settings={documentSettings}
+            customerName={customerName}
+          />
+        );
+      case '4.3b':
+        return (
+          <InsurancePolicyPreview
+            settings={documentSettings}
+            customerName={customerName}
+          />
+        );
+      case '5.4':
+        return (
+          <ProductMSDSPreview
+            settings={documentSettings}
+            customerName={customerName}
+          />
+        );
+      case '6.1':
+        return (
+          <WasteDisposalPreview
+            settings={documentSettings}
+            customerName={customerName}
+            customerId={customerId}
           />
         );
       default:
