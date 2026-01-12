@@ -65,6 +65,10 @@ export function DocumentAssignment() {
     }
   }, [selectedBranchId, assignTarget]);
 
+  useEffect(() => {
+    loadStorageFiles();
+  }, [selectedCustomerId, selectedBranchId]);
+
   const loadCustomers = async () => {
     try {
       setLoading(true);
@@ -228,7 +232,9 @@ export function DocumentAssignment() {
   const loadStorageFiles = async () => {
     try {
       setLoadingFiles(true);
-      const { data, error } = await supabase.storage
+      let allFiles: StorageFile[] = [];
+
+      const { data: publicFiles, error: publicError } = await supabase.storage
         .from('documents')
         .list('public', {
           limit: 100,
@@ -236,12 +242,45 @@ export function DocumentAssignment() {
           sortBy: { column: 'created_at', order: 'desc' }
         });
 
-      if (error) {
-        console.error('Error loading storage files:', error);
-        return;
+      if (!publicError && publicFiles) {
+        allFiles = [...allFiles, ...publicFiles.filter(f => f.name.endsWith('.pdf'))];
       }
 
-      setStorageFiles(data || []);
+      if (selectedCustomerId) {
+        const { data: customerFiles, error: customerError } = await supabase.storage
+          .from('documents')
+          .list(`customers/${selectedCustomerId}`, {
+            limit: 100,
+            offset: 0,
+            sortBy: { column: 'created_at', order: 'desc' }
+          });
+
+        if (!customerError && customerFiles) {
+          allFiles = [...allFiles, ...customerFiles.filter(f => f.name.endsWith('.pdf')).map(f => ({
+            ...f,
+            name: `customers/${selectedCustomerId}/${f.name}`
+          }))];
+        }
+      }
+
+      if (selectedBranchId) {
+        const { data: branchFiles, error: branchError } = await supabase.storage
+          .from('documents')
+          .list(`branches/${selectedBranchId}`, {
+            limit: 100,
+            offset: 0,
+            sortBy: { column: 'created_at', order: 'desc' }
+          });
+
+        if (!branchError && branchFiles) {
+          allFiles = [...allFiles, ...branchFiles.filter(f => f.name.endsWith('.pdf')).map(f => ({
+            ...f,
+            name: `branches/${selectedBranchId}/${f.name}`
+          }))];
+        }
+      }
+
+      setStorageFiles(allFiles);
     } catch (err) {
       console.error('Error loading storage files:', err);
     } finally {
@@ -250,9 +289,13 @@ export function DocumentAssignment() {
   };
 
   const getPublicUrl = (fileName: string) => {
+    const path = fileName.startsWith('customers/') || fileName.startsWith('branches/')
+      ? fileName
+      : `public/${fileName}`;
+
     const { data } = supabase.storage
       .from('documents')
-      .getPublicUrl(`public/${fileName}`);
+      .getPublicUrl(path);
     return data.publicUrl;
   };
 
@@ -272,6 +315,23 @@ export function DocumentAssignment() {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const getFileCategory = (fileName: string) => {
+    if (fileName.startsWith('customers/')) {
+      return { type: 'customer', label: 'Müşteriye Özel', color: 'blue' };
+    } else if (fileName.startsWith('branches/')) {
+      return { type: 'branch', label: 'Şubeye Özel', color: 'purple' };
+    }
+    return { type: 'public', label: 'Genel', color: 'green' };
+  };
+
+  const getDisplayFileName = (fileName: string) => {
+    if (fileName.startsWith('customers/') || fileName.startsWith('branches/')) {
+      const parts = fileName.split('/');
+      return parts[parts.length - 1];
+    }
+    return fileName;
   };
 
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
@@ -461,6 +521,13 @@ export function DocumentAssignment() {
         <h2 className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2" style={{ color: BRAND_GREEN }}>
           <FileText size={16} /> PDF Dosyaları (Storage)
         </h2>
+        {(selectedCustomerId || selectedBranchId) && (
+          <div className="mb-3 text-xs bg-blue-50 border border-blue-200 rounded p-2 text-blue-700">
+            <strong>Gösterilen:</strong> Genel PDF'ler
+            {selectedCustomerId && ` + ${selectedCustomer?.kisa_isim || 'Seçili müşteri'}'ye özel PDF'ler`}
+            {selectedBranchId && ` + ${selectedBranch?.sube_adi || 'Seçili şube'}'ye özel PDF'ler`}
+          </div>
+        )}
         {loadingFiles ? (
           <div className="text-xs text-green-600 text-center py-4">
             PDF dosyaları yükleniyor...
@@ -471,44 +538,59 @@ export function DocumentAssignment() {
           </div>
         ) : (
           <div className="space-y-2">
-            {storageFiles.map((file) => (
-              <div
-                key={file.id}
-                className="flex items-center justify-between p-3 bg-white border rounded hover:border-green-600 transition-colors"
-              >
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                    <FileText size={16} className="text-red-600" />
-                    {file.name}
+            {storageFiles.map((file) => {
+              const category = getFileCategory(file.name);
+              const displayName = getDisplayFileName(file.name);
+              return (
+                <div
+                  key={file.id}
+                  className="flex items-center justify-between p-3 bg-white border rounded hover:border-green-600 transition-colors"
+                >
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                      <FileText size={16} className="text-red-600" />
+                      {displayName}
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded ${
+                          category.color === 'blue'
+                            ? 'bg-blue-100 text-blue-700'
+                            : category.color === 'purple'
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'bg-green-100 text-green-700'
+                        }`}
+                      >
+                        {category.label}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {formatFileSize(file.metadata.size)} • {new Date(file.created_at).toLocaleDateString('tr-TR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {formatFileSize(file.metadata.size)} • {new Date(file.created_at).toLocaleDateString('tr-TR', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleViewPdf(file.name)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      title="PDF'i Görüntüle"
+                    >
+                      <Eye size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDownloadPdf(file.name)}
+                      className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
+                      title="PDF'i İndir"
+                    >
+                      <Download size={16} />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleViewPdf(file.name)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                    title="PDF'i Görüntüle"
-                  >
-                    <Eye size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDownloadPdf(file.name)}
-                    className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
-                    title="PDF'i İndir"
-                  >
-                    <Download size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
