@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileCheck, Plus, Trash2, Building2, Store } from 'lucide-react';
+import { FileCheck, Plus, Trash2, Building2, Store, FileText, Download, Eye } from 'lucide-react';
 import { BRAND_GREEN, MODULE_TITLES, NAVIGATION_ITEMS } from '../../constants';
 import { supabase } from '../../lib/supabase';
 import type { Customer, Branch } from '../../types';
@@ -13,6 +13,18 @@ interface AssignedDocument {
   created_at: string;
 }
 
+interface StorageFile {
+  name: string;
+  id: string;
+  updated_at: string;
+  created_at: string;
+  last_accessed_at: string;
+  metadata: {
+    size: number;
+    mimetype: string;
+  };
+}
+
 export function DocumentAssignment() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -23,9 +35,13 @@ export function DocumentAssignment() {
   const [selectedDocType, setSelectedDocType] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [storageFiles, setStorageFiles] = useState<StorageFile[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [selectedPdfUrl, setSelectedPdfUrl] = useState<string | null>(null);
 
   useEffect(() => {
     loadCustomers();
+    loadStorageFiles();
   }, []);
 
   useEffect(() => {
@@ -209,6 +225,55 @@ export function DocumentAssignment() {
     }
   };
 
+  const loadStorageFiles = async () => {
+    try {
+      setLoadingFiles(true);
+      const { data, error } = await supabase.storage
+        .from('documents')
+        .list('public', {
+          limit: 100,
+          offset: 0,
+          sortBy: { column: 'created_at', order: 'desc' }
+        });
+
+      if (error) {
+        console.error('Error loading storage files:', error);
+        return;
+      }
+
+      setStorageFiles(data || []);
+    } catch (err) {
+      console.error('Error loading storage files:', err);
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
+
+  const getPublicUrl = (fileName: string) => {
+    const { data } = supabase.storage
+      .from('documents')
+      .getPublicUrl(`public/${fileName}`);
+    return data.publicUrl;
+  };
+
+  const handleViewPdf = (fileName: string) => {
+    const url = getPublicUrl(fileName);
+    setSelectedPdfUrl(url);
+  };
+
+  const handleDownloadPdf = (fileName: string) => {
+    const url = getPublicUrl(fileName);
+    window.open(url, '_blank');
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
   const selectedBranch = branches.find(b => b.id === selectedBranchId);
 
@@ -390,6 +455,91 @@ export function DocumentAssignment() {
             )}
           </section>
         </>
+      )}
+
+      <section className="border-t pt-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2" style={{ color: BRAND_GREEN }}>
+          <FileText size={16} /> PDF Dosyaları (Storage)
+        </h2>
+        {loadingFiles ? (
+          <div className="text-xs text-green-600 text-center py-4">
+            PDF dosyaları yükleniyor...
+          </div>
+        ) : storageFiles.length === 0 ? (
+          <div className="text-xs text-gray-500 text-center py-8 bg-gray-50 rounded">
+            Henüz yüklenmiş PDF dosyası bulunmuyor.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {storageFiles.map((file) => (
+              <div
+                key={file.id}
+                className="flex items-center justify-between p-3 bg-white border rounded hover:border-green-600 transition-colors"
+              >
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                    <FileText size={16} className="text-red-600" />
+                    {file.name}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {formatFileSize(file.metadata.size)} • {new Date(file.created_at).toLocaleDateString('tr-TR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleViewPdf(file.name)}
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                    title="PDF'i Görüntüle"
+                  >
+                    <Eye size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDownloadPdf(file.name)}
+                    className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
+                    title="PDF'i İndir"
+                  >
+                    <Download size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {selectedPdfUrl && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedPdfUrl(null)}
+        >
+          <div
+            className="bg-white rounded-lg w-full max-w-6xl h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="font-semibold text-gray-900">PDF Görüntüleyici</h3>
+              <button
+                onClick={() => setSelectedPdfUrl(null)}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                src={selectedPdfUrl}
+                className="w-full h-full"
+                title="PDF Viewer"
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
