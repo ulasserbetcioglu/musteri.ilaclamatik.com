@@ -37,10 +37,11 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
     try {
       setLoading(true);
 
+      // MSDS ve diğer tüm dokümanları çek (report_photo hariç)
       const { data: msds, error: msdsError } = await supabase
         .from('documents')
         .select('*')
-        .in('document_type', ['msds', 'license', 'ruhsat'])
+        .neq('document_type', 'report_photo')
         .order('created_at', { ascending: false });
 
       if (msdsError) throw msdsError;
@@ -77,6 +78,16 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
         return 'Ruhsat';
       case 'report_photo':
         return 'Rapor Fotoğrafı';
+      case 'contract':
+        return 'Sözleşme';
+      case 'invoice':
+        return 'Fatura';
+      case 'agreement':
+        return 'Anlaşma';
+      case 'certificate':
+        return 'Sertifika';
+      case 'other':
+        return 'Diğer';
       default:
         return type;
     }
@@ -87,6 +98,26 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
       return <Image size={20} />;
     }
     return <FileText size={20} />;
+  };
+
+  const getDocumentTypeBadgeColor = (type: string) => {
+    switch (type) {
+      case 'msds':
+        return 'bg-green-100 text-green-800';
+      case 'license':
+      case 'ruhsat':
+        return 'bg-blue-100 text-blue-800';
+      case 'contract':
+        return 'bg-purple-100 text-purple-800';
+      case 'invoice':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'agreement':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'certificate':
+        return 'bg-pink-100 text-pink-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   return (
@@ -169,7 +200,7 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
           >
             <div className="flex items-center gap-2">
               <Shield size={20} />
-              <span>MSDS & Ruhsat Belgeleri ({msdsDocuments.length})</span>
+              <span>Tüm Belgeler ({msdsDocuments.length})</span>
             </div>
           </button>
           <button
@@ -205,7 +236,7 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
                       Henüz belge bulunmuyor
                     </h3>
                     <p className="text-gray-600">
-                      MSDS veya ruhsat belgesi henüz yüklenmemiş.
+                      Belge henüz yüklenmemiş.
                     </p>
                   </div>
                 ) : (
@@ -220,7 +251,7 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
                                 {getFileIcon(doc.file_type)}
-                                <span className="text-xs font-semibold px-2 py-1 bg-green-100 text-green-800 rounded">
+                                <span className={`text-xs font-semibold px-2 py-1 rounded ${getDocumentTypeBadgeColor(doc.document_type)}`}>
                                   {getDocumentTypeLabel(doc.document_type)}
                                 </span>
                               </div>
@@ -243,7 +274,7 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
                           </div>
 
                           <div className="flex gap-2">
-                            <a
+                            
                               href={doc.file_url}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -252,7 +283,7 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
                               <Eye size={16} />
                               Görüntüle
                             </a>
-                            <a
+                            
                               href={doc.file_url}
                               download
                               className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-medium"
@@ -343,7 +374,7 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
                 <p className="text-sm text-gray-600 mb-3">{selectedImage.description}</p>
               )}
               <div className="flex gap-2">
-                <a
+                
                   href={selectedImage.file_url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -352,7 +383,7 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
                   <Eye size={16} />
                   Yeni Sekmede Aç
                 </a>
-                <a
+                
                   href={selectedImage.file_url}
                   download
                   className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-medium"
