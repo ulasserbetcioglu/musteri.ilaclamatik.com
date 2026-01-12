@@ -28,7 +28,8 @@ const iconMap = {
   FileCheck: () => <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white text-sm font-bold">FC</div>,
   CreditCard: () => <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white text-sm font-bold">CC</div>,
   FileImage: () => <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white text-sm font-bold">FI</div>,
-  Package: () => <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white text-sm font-bold">P</div>
+  Package: () => <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white text-sm font-bold">P</div>,
+  AlertTriangle: () => <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white text-sm font-bold">!</div>
 };
 
 export function HomePage({ loading, onTabChange }: HomePageProps) {
