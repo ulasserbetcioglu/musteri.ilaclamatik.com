@@ -282,7 +282,7 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
                             >
                               <Eye size={16} />
                               Görüntüle
-                            </a>
+                            <a>
                             
                               href={doc.file_url}
                               download
