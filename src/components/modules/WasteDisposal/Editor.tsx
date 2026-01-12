@@ -1,99 +1,71 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Plus, Upload } from 'lucide-react';
+import { Trash2, Plus, FileText } from 'lucide-react';
 import { BRAND_GREEN } from '../../../constants';
 import { supabase } from '../../../lib/supabase';
 import type { DocumentSettings } from '../../../types';
 
-interface PDFDocument {
+interface WasteRecord {
   id: string;
-  document_type: string;
-  document_title: string;
-  file_name: string;
-  file_url: string;
-  uploaded_at: string;
+  tarih: string;
+  atik_turu: string;
+  miktar: string;
+  bertaraf_firmasi: string;
+  belge_no: string;
+  notlar: string;
 }
 
 interface WasteDisposalEditorProps {
   settings: DocumentSettings;
   onSettingsChange: (updates: Partial<DocumentSettings>) => void;
+  customerId?: string;
 }
 
-export function WasteDisposalEditor({ settings, onSettingsChange }: WasteDisposalEditorProps) {
-  const [pdfs, setPdfs] = useState<PDFDocument[]>([]);
+export function WasteDisposalEditor({ settings, onSettingsChange, customerId }: WasteDisposalEditorProps) {
+  const [records, setRecords] = useState<WasteRecord[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [newPdfUrl, setNewPdfUrl] = useState('');
-  const [newPdfTitle, setNewPdfTitle] = useState('');
 
   useEffect(() => {
-    loadPDFs();
-  }, []);
-
-  const loadPDFs = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('document_pdfs')
-        .select('*')
-        .eq('document_type', '6.1')
-        .order('uploaded_at', { ascending: false });
-
-      if (error) throw error;
-      setPdfs(data || []);
-    } catch (err) {
-      console.error('Error loading PDFs:', err);
-    } finally {
-      setLoading(false);
+    if (customerId) {
+      loadRecords();
     }
+  }, [customerId]);
+
+  const loadRecords = async () => {
+    if (!customerId) return;
+
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('waste_disposal_records')
+      .select('*')
+      .eq('customer_id', customerId)
+      .order('tarih', { ascending: false });
+
+    if (!error && data) {
+      setRecords(data);
+    }
+    setLoading(false);
   };
 
-  const handleAddPDF = async () => {
-    if (!newPdfUrl || !newPdfTitle) {
-      alert('Lütfen PDF URL ve başlık giriniz');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const { error } = await supabase
-        .from('document_pdfs')
-        .insert({
-          document_type: '6.1',
-          document_title: newPdfTitle,
-          file_name: newPdfUrl.split('/').pop() || 'document.pdf',
-          file_url: newPdfUrl
-        });
-
-      if (error) throw error;
-
-      alert('PDF başarıyla eklendi!');
-      setNewPdfUrl('');
-      setNewPdfTitle('');
-      loadPDFs();
-    } catch (err: any) {
-      console.error('Error adding PDF:', err);
-      alert('PDF eklenirken hata: ' + err.message);
-    } finally {
-      setSaving(false);
-    }
+  const addRecord = () => {
+    const newRecord: WasteRecord = {
+      id: `temp-${Date.now()}`,
+      tarih: new Date().toISOString().split('T')[0],
+      atik_turu: 'Biyosidal Ürün Ambalajı',
+      miktar: '',
+      bertaraf_firmasi: '',
+      belge_no: '',
+      notlar: ''
+    };
+    setRecords([newRecord, ...records]);
   };
 
-  const handleDeletePDF = async (id: string) => {
-    if (!confirm('Bu PDF\'i silmek istediğinize emin misiniz?')) return;
+  const updateRecord = (id: string, field: keyof WasteRecord, value: string) => {
+    setRecords(records.map(r => r.id === id ? { ...r, [field]: value } : r));
+  };
 
-    try {
-      const { error } = await supabase
-        .from('document_pdfs')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      alert('PDF başarıyla silindi!');
-      loadPDFs();
-    } catch (err: any) {
-      console.error('Error deleting PDF:', err);
-      alert('PDF silinirken hata: ' + err.message);
+  const removeRecord = (id: string) => {
+    if (window.confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
+      setRecords(records.filter(r => r.id !== id));
     }
   };
 
@@ -102,94 +74,163 @@ export function WasteDisposalEditor({ settings, onSettingsChange }: WasteDisposa
     onSettingsChange({ [name]: value });
   };
 
+  if (!customerId) {
+    return (
+      <div className="text-center py-8 text-gray-500 bg-yellow-50 p-6 rounded border border-yellow-200">
+        <p className="font-medium">Lütfen önce bir müşteri seçiniz.</p>
+        <p className="text-sm mt-1">Atık bertaraf kayıtları müşteri bazlıdır.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-green-50 p-3 rounded border border-green-200 text-sm text-green-800 mb-4">
-        Atık imha belgelerini buradan yönetin. Boşalan ilaç ambalajları ve kemirgen ölülerinin lisanslı firmaya teslim edildiğini gösteren belgeler.
+        Bu müşteriye ait biyosidal atık bertaraf kayıtlarını buradan yönetebilirsiniz. Kayıtlar yasal yükümlülükler için önemlidir.
       </div>
 
-      <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2" style={{ color: BRAND_GREEN }}>
-          <Plus size={16} /> Yeni PDF Ekle
+      <div className="flex justify-between items-center border-b pb-2 mb-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wider flex items-center gap-2" style={{ color: BRAND_GREEN }}>
+          <Trash2 size={16} /> Atık Bertaraf Kayıtları
         </h2>
-        <div className="space-y-3 p-3 bg-gray-50 rounded border">
-          <input
-            type="text"
-            placeholder="PDF Başlığı (ör: Atık İmha Belgesi - 2024)"
-            value={newPdfTitle}
-            onChange={(e) => setNewPdfTitle(e.target.value)}
-            className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
-          />
-          <input
-            type="text"
-            placeholder="PDF URL (ör: /documents/atik-imha-2024.pdf)"
-            value={newPdfUrl}
-            onChange={(e) => setNewPdfUrl(e.target.value)}
-            className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
-          />
-          <button
-            onClick={handleAddPDF}
-            disabled={saving}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-white rounded text-sm font-medium transition-colors disabled:opacity-50"
-            style={{ backgroundColor: BRAND_GREEN }}
-          >
-            {saving ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Ekleniyor...
-              </>
-            ) : (
-              <>
-                <Upload size={16} />
-                PDF Ekle
-              </>
-            )}
-          </button>
+        <button
+          onClick={addRecord}
+          className="bg-green-600 text-white p-1.5 rounded hover:bg-green-700 transition"
+        >
+          <Plus size={16} />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-8 text-sm text-gray-500">Kayıtlar yükleniyor...</div>
+      ) : (
+        <div className="space-y-4">
+          {records.length === 0 ? (
+            <div className="text-center py-8 text-gray-400 border-2 border-dashed rounded">
+              Henüz atık bertaraf kaydı bulunmuyor. Yeni kayıt ekleyin.
+            </div>
+          ) : (
+            records.map((record, index) => (
+              <div key={record.id} className="p-3 bg-white border rounded shadow-sm relative group">
+                <div className="absolute top-2 right-2 flex gap-2">
+                  <span className="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded font-mono">
+                    #{index + 1}
+                  </span>
+                  <button
+                    onClick={() => removeRecord(record.id)}
+                    className="text-red-400 hover:text-red-600"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+
+                <div className="space-y-2 mt-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-gray-500 pl-1">Tarih</label>
+                      <input
+                        type="date"
+                        value={record.tarih}
+                        onChange={(e) => updateRecord(record.id, 'tarih', e.target.value)}
+                        className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-500 pl-1">Atık Türü</label>
+                      <select
+                        value={record.atik_turu}
+                        onChange={(e) => updateRecord(record.id, 'atik_turu', e.target.value)}
+                        className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+                      >
+                        <option>Biyosidal Ürün Ambalajı</option>
+                        <option>İlaç Artığı</option>
+                        <option>Kontamine Malzeme</option>
+                        <option>Diğer Tehlikeli Atık</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-gray-500 pl-1">Miktar</label>
+                      <input
+                        type="text"
+                        placeholder="Örn: 25 kg"
+                        value={record.miktar}
+                        onChange={(e) => updateRecord(record.id, 'miktar', e.target.value)}
+                        className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-500 pl-1">Belge No</label>
+                      <input
+                        type="text"
+                        placeholder="Örn: ATIK-2024-001"
+                        value={record.belge_no}
+                        onChange={(e) => updateRecord(record.id, 'belge_no', e.target.value)}
+                        className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-gray-500 pl-1">Bertaraf Firması</label>
+                    <input
+                      type="text"
+                      placeholder="Atık bertaraf firması adı"
+                      value={record.bertaraf_firmasi}
+                      onChange={(e) => updateRecord(record.id, 'bertaraf_firmasi', e.target.value)}
+                      className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-gray-500 pl-1">Notlar (Opsiyonel)</label>
+                    <textarea
+                      placeholder="Ek bilgiler..."
+                      value={record.notlar}
+                      onChange={(e) => updateRecord(record.id, 'notlar', e.target.value)}
+                      rows={2}
+                      className="w-full p-2 border rounded text-xs outline-none focus:border-green-600"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
-      </section>
+      )}
 
       <section>
         <h2 className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2 border-t pt-4" style={{ color: BRAND_GREEN }}>
-          <Trash2 size={16} /> Yüklü PDF Dosyaları ({pdfs.length})
+          <FileText size={16} /> Doküman Ayarları
         </h2>
-
-        {loading ? (
-          <div className="text-xs text-green-600 text-center py-4">
-            PDF'ler yükleniyor...
-          </div>
-        ) : pdfs.length === 0 ? (
-          <div className="text-xs text-gray-500 text-center py-8 bg-gray-50 rounded">
-            Henüz PDF dosyası eklenmemiş.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {pdfs.map((pdf) => (
-              <div
-                key={pdf.id}
-                className="flex items-center justify-between p-3 bg-white border rounded hover:border-green-600 transition-colors"
-              >
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-gray-900">
-                    {pdf.document_title}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {pdf.file_url}
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    {new Date(pdf.uploaded_at).toLocaleDateString('tr-TR')} {new Date(pdf.uploaded_at).toLocaleTimeString('tr-TR')}
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleDeletePDF(pdf.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors ml-2"
-                  title="PDF'i Sil"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-3 gap-2">
+          <input
+            type="text"
+            name="dokumanNo"
+            value={settings.dokumanNo}
+            onChange={handleSettingsChange}
+            className="p-2 border rounded text-sm"
+            placeholder="No"
+          />
+          <input
+            type="text"
+            name="yayinTarihi"
+            value={settings.yayinTarihi}
+            onChange={handleSettingsChange}
+            className="p-2 border rounded text-sm"
+            placeholder="Tarih"
+          />
+          <input
+            type="text"
+            name="revizyonNo"
+            value={settings.revizyonNo}
+            onChange={handleSettingsChange}
+            className="p-2 border rounded text-sm"
+            placeholder="Rev"
+          />
+        </div>
       </section>
     </div>
   );

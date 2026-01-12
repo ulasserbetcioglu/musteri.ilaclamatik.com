@@ -1,16 +1,21 @@
 import { useState, useEffect } from 'react';
-import { Shield, Plus, Trash2, Upload } from 'lucide-react';
+import { Shield, FileText } from 'lucide-react';
 import { BRAND_GREEN } from '../../../constants';
 import { supabase } from '../../../lib/supabase';
 import type { DocumentSettings } from '../../../types';
 
-interface PDFDocument {
+interface InsurancePolicy {
   id: string;
-  document_type: string;
-  document_title: string;
-  file_name: string;
-  file_url: string;
-  uploaded_at: string;
+  policy_no: string;
+  sigorta_sirketi: string;
+  baslangic_tarihi: string;
+  bitis_tarihi: string;
+  teminat_tutari: string;
+  para_birimi: string;
+  kapsam: string;
+  broker_adi: string;
+  notlar: string;
+  is_active: boolean;
 }
 
 interface InsurancePolicyEditorProps {
@@ -19,82 +24,43 @@ interface InsurancePolicyEditorProps {
 }
 
 export function InsurancePolicyEditor({ settings, onSettingsChange }: InsurancePolicyEditorProps) {
-  const [pdfs, setPdfs] = useState<PDFDocument[]>([]);
+  const [policy, setPolicy] = useState<InsurancePolicy>({
+    id: '',
+    policy_no: '',
+    sigorta_sirketi: '',
+    baslangic_tarihi: new Date().toISOString().split('T')[0],
+    bitis_tarihi: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+    teminat_tutari: '0',
+    para_birimi: 'TL',
+    kapsam: 'Mesleki Sorumluluk, Mal Hasarı, Bedeni Zarar',
+    broker_adi: '',
+    notlar: '',
+    is_active: true
+  });
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [newPdfUrl, setNewPdfUrl] = useState('');
-  const [newPdfTitle, setNewPdfTitle] = useState('');
 
   useEffect(() => {
-    loadPDFs();
+    loadActivePolicy();
   }, []);
 
-  const loadPDFs = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('document_pdfs')
-        .select('*')
-        .eq('document_type', '4.3b')
-        .order('uploaded_at', { ascending: false });
+  const loadActivePolicy = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('insurance_policies')
+      .select('*')
+      .eq('is_active', true)
+      .order('bitis_tarihi', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-      if (error) throw error;
-      setPdfs(data || []);
-    } catch (err) {
-      console.error('Error loading PDFs:', err);
-    } finally {
-      setLoading(false);
+    if (!error && data) {
+      setPolicy(data);
     }
+    setLoading(false);
   };
 
-  const handleAddPDF = async () => {
-    if (!newPdfUrl || !newPdfTitle) {
-      alert('Lütfen PDF URL ve başlık giriniz');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const { error } = await supabase
-        .from('document_pdfs')
-        .insert({
-          document_type: '4.3b',
-          document_title: newPdfTitle,
-          file_name: newPdfUrl.split('/').pop() || 'document.pdf',
-          file_url: newPdfUrl
-        });
-
-      if (error) throw error;
-
-      alert('PDF başarıyla eklendi!');
-      setNewPdfUrl('');
-      setNewPdfTitle('');
-      loadPDFs();
-    } catch (err: any) {
-      console.error('Error adding PDF:', err);
-      alert('PDF eklenirken hata: ' + err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeletePDF = async (id: string) => {
-    if (!confirm('Bu PDF\'i silmek istediğinize emin misiniz?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('document_pdfs')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      alert('PDF başarıyla silindi!');
-      loadPDFs();
-    } catch (err: any) {
-      console.error('Error deleting PDF:', err);
-      alert('PDF silinirken hata: ' + err.message);
-    }
+  const updateField = (field: keyof InsurancePolicy, value: string | boolean) => {
+    setPolicy(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,92 +71,168 @@ export function InsurancePolicyEditor({ settings, onSettingsChange }: InsuranceP
   return (
     <div className="space-y-6">
       <div className="bg-green-50 p-3 rounded border border-green-200 text-sm text-green-800 mb-4">
-        Mali sorumluluk sigorta poliçesi belgelerini buradan yönetin. İlaçlama sırasında müşteri eşyasına zarar durumunu karşılayan sigorta belgeleri.
+        Mali sorumluluk sigorta poliçesi bilgilerini buradan düzenleyin. Bu bilgi firma geneli (tüm müşteriler) için geçerlidir.
       </div>
 
-      <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2" style={{ color: BRAND_GREEN }}>
-          <Plus size={16} /> Yeni PDF Ekle
-        </h2>
-        <div className="space-y-3 p-3 bg-gray-50 rounded border">
-          <input
-            type="text"
-            placeholder="PDF Başlığı (ör: Mali Sorumluluk Sigortası 2024)"
-            value={newPdfTitle}
-            onChange={(e) => setNewPdfTitle(e.target.value)}
-            className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
-          />
-          <input
-            type="text"
-            placeholder="PDF URL (ör: /documents/sigorta-poilcesi-2024.pdf)"
-            value={newPdfUrl}
-            onChange={(e) => setNewPdfUrl(e.target.value)}
-            className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
-          />
-          <button
-            onClick={handleAddPDF}
-            disabled={saving}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-white rounded text-sm font-medium transition-colors disabled:opacity-50"
-            style={{ backgroundColor: BRAND_GREEN }}
-          >
-            {saving ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Ekleniyor...
-              </>
-            ) : (
-              <>
-                <Upload size={16} />
-                PDF Ekle
-              </>
-            )}
-          </button>
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2 border-t pt-4" style={{ color: BRAND_GREEN }}>
-          <Shield size={16} /> Yüklü PDF Dosyaları ({pdfs.length})
-        </h2>
-
-        {loading ? (
-          <div className="text-xs text-green-600 text-center py-4">
-            PDF'ler yükleniyor...
-          </div>
-        ) : pdfs.length === 0 ? (
-          <div className="text-xs text-gray-500 text-center py-8 bg-gray-50 rounded">
-            Henüz PDF dosyası eklenmemiş.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {pdfs.map((pdf) => (
-              <div
-                key={pdf.id}
-                className="flex items-center justify-between p-3 bg-white border rounded hover:border-green-600 transition-colors"
-              >
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-gray-900">
-                    {pdf.document_title}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {pdf.file_url}
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    {new Date(pdf.uploaded_at).toLocaleDateString('tr-TR')} {new Date(pdf.uploaded_at).toLocaleTimeString('tr-TR')}
-                  </div>
+      {loading ? (
+        <div className="text-center py-8 text-sm text-gray-500">Sigorta bilgileri yükleniyor...</div>
+      ) : (
+        <>
+          <section>
+            <h2 className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2" style={{ color: BRAND_GREEN }}>
+              <Shield size={16} /> Poliçe Bilgileri
+            </h2>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-gray-500">Poliçe No</label>
+                  <input
+                    type="text"
+                    placeholder="Örn: POL-2024-12345"
+                    value={policy.policy_no}
+                    onChange={(e) => updateField('policy_no', e.target.value)}
+                    className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+                  />
                 </div>
-                <button
-                  onClick={() => handleDeletePDF(pdf.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors ml-2"
-                  title="PDF'i Sil"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div>
+                  <label className="text-xs font-medium text-gray-500">Sigorta Şirketi</label>
+                  <input
+                    type="text"
+                    placeholder="Örn: Anadolu Sigorta"
+                    value={policy.sigorta_sirketi}
+                    onChange={(e) => updateField('sigorta_sirketi', e.target.value)}
+                    className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+                  />
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-gray-500">Başlangıç Tarihi</label>
+                  <input
+                    type="date"
+                    value={policy.baslangic_tarihi}
+                    onChange={(e) => updateField('baslangic_tarihi', e.target.value)}
+                    className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500">Bitiş Tarihi</label>
+                  <input
+                    type="date"
+                    value={policy.bitis_tarihi}
+                    onChange={(e) => updateField('bitis_tarihi', e.target.value)}
+                    className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-gray-500">Teminat Tutarı</label>
+                  <input
+                    type="text"
+                    placeholder="Örn: 500.000"
+                    value={policy.teminat_tutari}
+                    onChange={(e) => updateField('teminat_tutari', e.target.value)}
+                    className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500">Para Birimi</label>
+                  <select
+                    value={policy.para_birimi}
+                    onChange={(e) => updateField('para_birimi', e.target.value)}
+                    className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+                  >
+                    <option>TL</option>
+                    <option>USD</option>
+                    <option>EUR</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-500">Kapsam</label>
+                <textarea
+                  placeholder="Sigorta kapsamı (örn: Mesleki Sorumluluk, Mal Hasarı, Bedeni Zarar)"
+                  value={policy.kapsam}
+                  onChange={(e) => updateField('kapsam', e.target.value)}
+                  rows={3}
+                  className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-500">Broker Adı (Opsiyonel)</label>
+                <input
+                  type="text"
+                  placeholder="Sigorta aracısı/broker"
+                  value={policy.broker_adi}
+                  onChange={(e) => updateField('broker_adi', e.target.value)}
+                  className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-500">Notlar (Opsiyonel)</label>
+                <textarea
+                  placeholder="Ek bilgiler ve açıklamalar"
+                  value={policy.notlar}
+                  onChange={(e) => updateField('notlar', e.target.value)}
+                  rows={2}
+                  className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="is_active"
+                  checked={policy.is_active}
+                  onChange={(e) => updateField('is_active', e.target.checked)}
+                  className="w-4 h-4 accent-green-700"
+                />
+                <label htmlFor="is_active" className="text-sm font-medium text-gray-700 cursor-pointer">
+                  Bu poliçe aktif
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2 border-t pt-4" style={{ color: BRAND_GREEN }}>
+              <FileText size={16} /> Doküman Ayarları
+            </h2>
+            <div className="grid grid-cols-3 gap-2">
+              <input
+                type="text"
+                name="dokumanNo"
+                value={settings.dokumanNo}
+                onChange={handleSettingsChange}
+                className="p-2 border rounded text-sm"
+                placeholder="No"
+              />
+              <input
+                type="text"
+                name="yayinTarihi"
+                value={settings.yayinTarihi}
+                onChange={handleSettingsChange}
+                className="p-2 border rounded text-sm"
+                placeholder="Tarih"
+              />
+              <input
+                type="text"
+                name="revizyonNo"
+                value={settings.revizyonNo}
+                onChange={handleSettingsChange}
+                className="p-2 border rounded text-sm"
+                placeholder="Rev"
+              />
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }
