@@ -37,7 +37,6 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
     try {
       setLoading(true);
 
-      // MSDS ve diğer tüm dokümanları çek (report_photo hariç)
       const { data: msds, error: msdsError } = await supabase
         .from('documents')
         .select('*')
