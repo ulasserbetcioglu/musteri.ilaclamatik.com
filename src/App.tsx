@@ -216,32 +216,20 @@ export default function MentorModule() {
             )}
             {activeTab === '3.1' && (
               <PermitsEditor
-                customers={customers}
-                selectedCustomerId={selectedCustomerId}
-                onCustomerSelect={setSelectedCustomerId}
                 settings={settings31}
                 onSettingsChange={handleSettings31Change}
-                loading={loading}
               />
             )}
             {activeTab === '3.2' && (
               <CertificatesEditor
-                customers={customers}
-                selectedCustomerId={selectedCustomerId}
-                onCustomerSelect={setSelectedCustomerId}
                 settings={settings32}
                 onSettingsChange={handleSettings32Change}
-                loading={loading}
               />
             )}
             {activeTab === '3.3' && (
               <FumigationLicenseEditor
-                customers={customers}
-                selectedCustomerId={selectedCustomerId}
-                onCustomerSelect={setSelectedCustomerId}
                 settings={settings33}
                 onSettingsChange={handleSettings33Change}
-                loading={loading}
               />
             )}
             {/* Add other module editors */}
@@ -273,13 +261,13 @@ export default function MentorModule() {
             <IPMContractPreview customerData={customerData} settings={settings21} />
           )}
           {activeTab === '3.1' && (
-            <PermitsPreview customerData={customerData} settings={settings31} selectedCustomerId={selectedCustomerId} />
+            <PermitsPreview settings={settings31} />
           )}
           {activeTab === '3.2' && (
-            <CertificatesPreview customerData={customerData} settings={settings32} selectedCustomerId={selectedCustomerId} />
+            <CertificatesPreview settings={settings32} />
           )}
           {activeTab === '3.3' && (
-            <FumigationLicensePreview customerData={customerData} settings={settings33} selectedCustomerId={selectedCustomerId} />
+            <FumigationLicensePreview settings={settings33} />
           )}
           {/* Add other module previews */}
         </div>

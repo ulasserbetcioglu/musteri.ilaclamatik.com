@@ -1,63 +1,99 @@
 import { useState, useEffect } from 'react';
-import { Users, Settings, Building2, Plus, Trash2, Save } from 'lucide-react';
-import { BRAND_GREEN, STAFF_ROLES } from '../../../constants';
+import { Users, Plus, Trash2, Upload } from 'lucide-react';
+import { BRAND_GREEN } from '../../../constants';
 import { supabase } from '../../../lib/supabase';
-import type { DocumentSettings, Customer, Staff } from '../../../types';
+import type { DocumentSettings } from '../../../types';
 
-interface CertificatesEditorProps {
-  customers: Customer[];
-  selectedCustomerId: string;
-  onCustomerSelect: (customerId: string) => void;
-  settings: DocumentSettings;
-  onSettingsChange: (updates: Partial<DocumentSettings>) => void;
-  loading: boolean;
+interface PDFDocument {
+  id: string;
+  document_type: string;
+  document_title: string;
+  file_name: string;
+  file_url: string;
+  uploaded_at: string;
 }
 
-export function CertificatesEditor({
-  customers,
-  selectedCustomerId,
-  onCustomerSelect,
-  settings,
-  onSettingsChange,
-  loading
-}: CertificatesEditorProps) {
-  const [certificates, setCertificates] = useState<Staff[]>([]);
+interface CertificatesEditorProps {
+  settings: DocumentSettings;
+  onSettingsChange: (updates: Partial<DocumentSettings>) => void;
+}
+
+export function CertificatesEditor({ settings, onSettingsChange }: CertificatesEditorProps) {
+  const [pdfs, setPdfs] = useState<PDFDocument[]>([]);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [loadingCertificates, setLoadingCertificates] = useState(false);
+  const [newPdfUrl, setNewPdfUrl] = useState('');
+  const [newPdfTitle, setNewPdfTitle] = useState('');
 
   useEffect(() => {
-    if (selectedCustomerId) {
-      loadCertificates();
-    } else {
-      setCertificates([]);
-    }
-  }, [selectedCustomerId]);
+    loadPDFs();
+  }, []);
 
-  const loadCertificates = async () => {
+  const loadPDFs = async () => {
     try {
-      setLoadingCertificates(true);
+      setLoading(true);
       const { data, error } = await supabase
-        .from('staff_certificates')
+        .from('document_pdfs')
         .select('*')
-        .eq('customer_id', selectedCustomerId)
-        .is('branch_id', null)
-        .order('created_at', { ascending: false });
+        .eq('document_type', '3.2')
+        .order('uploaded_at', { ascending: false });
+
+      if (error) throw error;
+      setPdfs(data || []);
+    } catch (err) {
+      console.error('Error loading PDFs:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddPDF = async () => {
+    if (!newPdfUrl || !newPdfTitle) {
+      alert('Lütfen PDF URL ve başlık giriniz');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const { error } = await supabase
+        .from('document_pdfs')
+        .insert({
+          document_type: '3.2',
+          document_title: newPdfTitle,
+          file_name: newPdfUrl.split('/').pop() || 'document.pdf',
+          file_url: newPdfUrl
+        });
 
       if (error) throw error;
 
-      const formattedData: Staff[] = (data || []).map((item: any) => ({
-        id: parseInt(item.id) || 0,
-        adSoyad: item.ad_soyad || '',
-        gorev: item.gorev || '',
-        sertifikaNo: item.sertifika_no || '',
-        gecerlilikTarihi: item.gecerlilik_tarihi || ''
-      }));
-
-      setCertificates(formattedData);
-    } catch (err) {
-      console.error('Error loading certificates:', err);
+      alert('PDF başarıyla eklendi!');
+      setNewPdfUrl('');
+      setNewPdfTitle('');
+      loadPDFs();
+    } catch (err: any) {
+      console.error('Error adding PDF:', err);
+      alert('PDF eklenirken hata: ' + err.message);
     } finally {
-      setLoadingCertificates(false);
+      setSaving(false);
+    }
+  };
+
+  const handleDeletePDF = async (id: string) => {
+    if (!confirm('Bu PDF\'i silmek istediğinize emin misiniz?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('document_pdfs')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      alert('PDF başarıyla silindi!');
+      loadPDFs();
+    } catch (err: any) {
+      console.error('Error deleting PDF:', err);
+      alert('PDF silinirken hata: ' + err.message);
     }
   };
 
@@ -66,227 +102,95 @@ export function CertificatesEditor({
     onSettingsChange({ [name]: value });
   };
 
-  const handleAddCertificate = () => {
-    const newId = certificates.length > 0 ? Math.max(...certificates.map(c => c.id)) + 1 : 1;
-    setCertificates([...certificates, {
-      id: newId,
-      adSoyad: '',
-      gorev: STAFF_ROLES[0],
-      sertifikaNo: '',
-      gecerlilikTarihi: ''
-    }]);
-  };
-
-  const handleDeleteCertificate = (id: number) => {
-    setCertificates(certificates.filter(c => c.id !== id));
-  };
-
-  const handleCertificateChange = (id: number, field: keyof Staff, value: string) => {
-    setCertificates(certificates.map(c =>
-      c.id === id ? { ...c, [field]: value } : c
-    ));
-  };
-
-  const handleSaveCertificates = async () => {
-    if (!selectedCustomerId) {
-      alert('Lütfen önce bir müşteri seçin');
-      return;
-    }
-
-    try {
-      setSaving(true);
-
-      await supabase
-        .from('staff_certificates')
-        .delete()
-        .eq('customer_id', selectedCustomerId)
-        .is('branch_id', null);
-
-      if (certificates.length > 0) {
-        const { error } = await supabase
-          .from('staff_certificates')
-          .insert(
-            certificates.map(cert => ({
-              customer_id: selectedCustomerId,
-              branch_id: null,
-              ad_soyad: cert.adSoyad,
-              gorev: cert.gorev,
-              sertifika_no: cert.sertifikaNo,
-              gecerlilik_tarihi: cert.gecerlilikTarihi || null
-            }))
-          );
-
-        if (error) throw error;
-      }
-
-      alert('Sertifikalar başarıyla kaydedildi!');
-      loadCertificates();
-    } catch (err: any) {
-      console.error('Error saving certificates:', err);
-      alert('Kaydetme hatası: ' + err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="bg-green-50 p-3 rounded border border-green-200 text-sm text-green-800 mb-4">
-        Mesul müdür ve operatör sertifikalarını bu bölümde yönetebilirsiniz.
+        Mesul müdür ve operatör sertifikası PDF dosyalarını buradan yönetin. Eklenen PDF'ler tüm müşteriler için geçerlidir.
       </div>
 
       <section>
         <h2 className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2" style={{ color: BRAND_GREEN }}>
-          <Building2 size={16} /> Müşteri Seçimi
+          <Plus size={16} /> Yeni PDF Ekle
         </h2>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium text-gray-500">Müşteri Seçin</label>
-            <select
-              value={selectedCustomerId}
-              onChange={(e) => onCustomerSelect(e.target.value)}
-              className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
-              disabled={loading}
-            >
-              <option value="">-- Müşteri Seçiniz --</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.cari_isim} ({customer.kisa_isim})
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="space-y-3 p-3 bg-gray-50 rounded border">
+          <input
+            type="text"
+            placeholder="PDF Başlığı (ör: Mesul Müdür Sertifikası - Ahmet Yılmaz)"
+            value={newPdfTitle}
+            onChange={(e) => setNewPdfTitle(e.target.value)}
+            className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+          />
+          <input
+            type="text"
+            placeholder="PDF URL (ör: /documents/sertifika-001.pdf)"
+            value={newPdfUrl}
+            onChange={(e) => setNewPdfUrl(e.target.value)}
+            className="w-full p-2 border rounded text-sm outline-none focus:border-green-600"
+          />
+          <button
+            onClick={handleAddPDF}
+            disabled={saving}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-white rounded text-sm font-medium transition-colors disabled:opacity-50"
+            style={{ backgroundColor: BRAND_GREEN }}
+          >
+            {saving ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Ekleniyor...
+              </>
+            ) : (
+              <>
+                <Upload size={16} />
+                PDF Ekle
+              </>
+            )}
+          </button>
         </div>
       </section>
 
-      {selectedCustomerId && (
-        <>
-          <section>
-            <h2 className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2 border-t pt-4" style={{ color: BRAND_GREEN }}>
-              <Users size={16} /> Mesul Müdür ve Operatör Sertifikaları
-            </h2>
+      <section>
+        <h2 className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2 border-t pt-4" style={{ color: BRAND_GREEN }}>
+          <Users size={16} /> Yüklü PDF Dosyaları ({pdfs.length})
+        </h2>
 
-            {loadingCertificates ? (
-              <div className="text-xs text-green-600 text-center py-4">
-                Sertifikalar yükleniyor...
+        {loading ? (
+          <div className="text-xs text-green-600 text-center py-4">
+            PDF'ler yükleniyor...
+          </div>
+        ) : pdfs.length === 0 ? (
+          <div className="text-xs text-gray-500 text-center py-8 bg-gray-50 rounded">
+            Henüz PDF dosyası eklenmemiş.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {pdfs.map((pdf) => (
+              <div
+                key={pdf.id}
+                className="flex items-center justify-between p-3 bg-white border rounded hover:border-green-600 transition-colors"
+              >
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-900">
+                    {pdf.document_title}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {pdf.file_url}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    {new Date(pdf.uploaded_at).toLocaleDateString('tr-TR')} {new Date(pdf.uploaded_at).toLocaleTimeString('tr-TR')}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleDeletePDF(pdf.id)}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors ml-2"
+                  title="PDF'i Sil"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
-            ) : (
-              <>
-                <div className="space-y-3 mb-3">
-                  {certificates.map((cert) => (
-                    <div key={cert.id} className="p-3 border rounded bg-gray-50 space-y-2">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-medium text-gray-600">Personel #{cert.id}</span>
-                        <button
-                          onClick={() => handleDeleteCertificate(cert.id)}
-                          className="text-red-600 hover:text-red-800"
-                          title="Sil"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                      <input
-                        type="text"
-                        placeholder="Ad Soyad"
-                        value={cert.adSoyad}
-                        onChange={(e) => handleCertificateChange(cert.id, 'adSoyad', e.target.value)}
-                        className="w-full p-2 border rounded text-xs outline-none focus:border-green-600"
-                      />
-                      <select
-                        value={cert.gorev}
-                        onChange={(e) => handleCertificateChange(cert.id, 'gorev', e.target.value)}
-                        className="w-full p-2 border rounded text-xs outline-none focus:border-green-600"
-                      >
-                        {STAFF_ROLES.map((role) => (
-                          <option key={role} value={role}>
-                            {role}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          placeholder="Sertifika No"
-                          value={cert.sertifikaNo}
-                          onChange={(e) => handleCertificateChange(cert.id, 'sertifikaNo', e.target.value)}
-                          className="w-full p-2 border rounded text-xs outline-none focus:border-green-600"
-                        />
-                        <input
-                          type="date"
-                          placeholder="Geçerlilik Tarihi"
-                          value={cert.gecerlilikTarihi}
-                          onChange={(e) => handleCertificateChange(cert.id, 'gecerlilikTarihi', e.target.value)}
-                          className="w-full p-2 border rounded text-xs outline-none focus:border-green-600"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleAddCertificate}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white border-2 border-green-600 text-green-600 rounded text-sm font-medium hover:bg-green-50 transition-colors"
-                  >
-                    <Plus size={16} />
-                    Yeni Personel Ekle
-                  </button>
-                  <button
-                    onClick={handleSaveCertificates}
-                    disabled={saving}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-white rounded text-sm font-medium transition-colors disabled:opacity-50"
-                    style={{ backgroundColor: BRAND_GREEN }}
-                  >
-                    {saving ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Kaydediliyor...
-                      </>
-                    ) : (
-                      <>
-                        <Save size={16} />
-                        Kaydet
-                      </>
-                    )}
-                  </button>
-                </div>
-              </>
-            )}
-          </section>
-
-          <section>
-            <h2 className="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2 border-t pt-4" style={{ color: BRAND_GREEN }}>
-              <Settings size={16} /> Doküman Ayarları
-            </h2>
-            <div className="grid grid-cols-3 gap-2">
-              <input
-                type="text"
-                name="dokumanNo"
-                value={settings.dokumanNo}
-                onChange={handleSettingsChange}
-                className="p-2 border rounded text-sm outline-none focus:border-green-600"
-                placeholder="No"
-              />
-              <input
-                type="text"
-                name="yayinTarihi"
-                value={settings.yayinTarihi}
-                onChange={handleSettingsChange}
-                className="p-2 border rounded text-sm outline-none focus:border-green-600"
-                placeholder="Tarih"
-              />
-              <input
-                type="text"
-                name="revizyonNo"
-                value={settings.revizyonNo}
-                onChange={handleSettingsChange}
-                className="p-2 border rounded text-sm outline-none focus:border-green-600"
-                placeholder="Rev"
-              />
-            </div>
-          </section>
-        </>
-      )}
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

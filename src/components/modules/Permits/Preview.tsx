@@ -1,151 +1,103 @@
 import { useEffect, useState } from 'react';
-import { A4Header } from '../../common/A4Header';
-import { BRAND_GREEN } from '../../../constants';
 import { supabase } from '../../../lib/supabase';
-import type { CustomerData, DocumentSettings, Permit } from '../../../types';
+import { BRAND_GREEN } from '../../../constants';
+import type { DocumentSettings } from '../../../types';
 
-interface PermitsPreviewProps {
-  customerData: CustomerData;
-  settings: DocumentSettings;
-  selectedCustomerId: string;
+interface PDFDocument {
+  id: string;
+  document_type: string;
+  document_title: string;
+  file_name: string;
+  file_url: string;
+  uploaded_at: string;
 }
 
-export function PermitsPreview({ customerData, settings, selectedCustomerId }: PermitsPreviewProps) {
-  const [permits, setPermits] = useState<Permit[]>([]);
+interface PermitsPreviewProps {
+  settings: DocumentSettings;
+}
+
+export function PermitsPreview({ settings }: PermitsPreviewProps) {
+  const [pdfs, setPdfs] = useState<PDFDocument[]>([]);
+  const [selectedPdfUrl, setSelectedPdfUrl] = useState<string>('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (selectedCustomerId) {
-      loadPermits();
-    }
-  }, [selectedCustomerId]);
+    loadPDFs();
+  }, []);
 
-  const loadPermits = async () => {
+  const loadPDFs = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
-        .from('permits')
+        .from('document_pdfs')
         .select('*')
-        .eq('customer_id', selectedCustomerId)
-        .is('branch_id', null)
-        .order('created_at', { ascending: false });
+        .eq('document_type', '3.1')
+        .order('uploaded_at', { ascending: false });
 
       if (error) throw error;
+      setPdfs(data || []);
 
-      const formattedData: Permit[] = (data || []).map((item: any) => ({
-        id: parseInt(item.id) || 0,
-        belgeAdi: item.belge_adi || '',
-        belgeNo: item.belge_no || '',
-        verilisTarihi: item.verilis_tarihi || '',
-        gecerlilikTarihi: item.gecerlilik_tarihi || '',
-        verenKurum: item.veren_kurum || ''
-      }));
-
-      setPermits(formattedData);
+      if (data && data.length > 0) {
+        setSelectedPdfUrl(data[0].file_url);
+      }
     } catch (err) {
-      console.error('Error loading permits:', err);
+      console.error('Error loading PDFs:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '-';
-    try {
-      return new Date(dateString).toLocaleDateString('tr-TR');
-    } catch {
-      return dateString;
-    }
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: BRAND_GREEN }}></div>
+          <p className="text-gray-600">PDF yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (pdfs.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center text-gray-500">
+          <p className="text-lg mb-2">Henüz PDF dosyası eklenmemiş</p>
+          <p className="text-sm">Sol panelden PDF ekleyebilirsiniz</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className="bg-white shadow-2xl print:shadow-none w-[210mm] min-h-[297mm] p-[15mm] text-black box-border flex flex-col relative"
-      style={{ fontFamily: '"Times New Roman", Times, serif' }}
-    >
-      <A4Header title="İZİN VE RUHSATLAR" settings={settings} />
-
-      <div className="flex-grow">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold mb-3" style={{ color: BRAND_GREEN }}>
-            {customerData.ticariUnvan || 'MÜŞTERİ FİRMA ADI'}
-          </h1>
-          <h2 className="text-xl font-bold mb-2">
-            İZİN VE RUHSATLAR
-          </h2>
-        </div>
-
-        <div className="mb-6">
-          <h3 className="text-sm font-bold mb-3 pb-2 border-b-2 border-gray-300">
-            Firma Bilgileri
-          </h3>
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div>
-              <span className="font-semibold">Ticari Ünvan:</span>{' '}
-              {customerData.ticariUnvan || '-'}
-            </div>
-            <div>
-              <span className="font-semibold">Vergi Dairesi:</span>{' '}
-              {customerData.vergiDairesi || '-'}
-            </div>
-            <div>
-              <span className="font-semibold">Adres:</span>{' '}
-              {customerData.adres || '-'}
-            </div>
-            <div>
-              <span className="font-semibold">Telefon:</span>{' '}
-              {customerData.telefon || '-'}
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <h3 className="text-sm font-bold mb-3 pb-2 border-b-2 border-gray-300">
-            İzin ve Ruhsat Listesi
-          </h3>
-
-          {permits.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 text-sm">
-              Henüz izin veya ruhsat kaydı bulunmamaktadır.
-            </div>
-          ) : (
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr style={{ backgroundColor: BRAND_GREEN, color: 'white' }}>
-                  <th className="border border-gray-300 p-2 text-left">No</th>
-                  <th className="border border-gray-300 p-2 text-left">Belge Adı</th>
-                  <th className="border border-gray-300 p-2 text-left">Belge No</th>
-                  <th className="border border-gray-300 p-2 text-left">Veriliş Tarihi</th>
-                  <th className="border border-gray-300 p-2 text-left">Geçerlilik Tarihi</th>
-                  <th className="border border-gray-300 p-2 text-left">Veren Kurum</th>
-                </tr>
-              </thead>
-              <tbody>
-                {permits.map((permit, index) => (
-                  <tr key={permit.id} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                    <td className="border border-gray-300 p-2">{index + 1}</td>
-                    <td className="border border-gray-300 p-2">{permit.belgeAdi || '-'}</td>
-                    <td className="border border-gray-300 p-2">{permit.belgeNo || '-'}</td>
-                    <td className="border border-gray-300 p-2">{formatDate(permit.verilisTarihi)}</td>
-                    <td className="border border-gray-300 p-2">{formatDate(permit.gecerlilikTarihi)}</td>
-                    <td className="border border-gray-300 p-2">{permit.verenKurum || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        <div className="mt-12 border-t-2 border-gray-300 pt-6">
-          <div className="text-xs space-y-2">
-            <p className="font-semibold">Notlar:</p>
-            <ul className="list-disc pl-5 space-y-1 text-gray-700">
-              <li>Tüm izin ve ruhsatlar geçerlilik tarihleri içinde olmalıdır.</li>
-              <li>Süresi dolacak belgeler için yenileme işlemleri zamanında başlatılmalıdır.</li>
-              <li>Belge fotokopileri dosyada saklanmalı ve yetkili kurumlara ibraz edilmelidir.</li>
-            </ul>
-          </div>
+    <div className="w-full h-full flex flex-col bg-gray-100">
+      <div className="bg-white p-4 border-b shadow-sm print:hidden">
+        <div className="max-w-4xl mx-auto">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            PDF Seçin:
+          </label>
+          <select
+            value={selectedPdfUrl}
+            onChange={(e) => setSelectedPdfUrl(e.target.value)}
+            className="w-full p-2 border rounded-lg text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-200"
+          >
+            {pdfs.map((pdf) => (
+              <option key={pdf.id} value={pdf.file_url}>
+                {pdf.document_title}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      <div className="border-t-2 border-black pt-2 text-center text-[9pt] text-gray-500 mt-6">
-        Bu belge, MENTOR Çevre Sağlığı Hizmetleri kalite yönetim sisteminin bir parçasıdır. İzinsiz çoğaltılamaz.
+      <div className="flex-1 overflow-hidden">
+        {selectedPdfUrl && (
+          <iframe
+            src={selectedPdfUrl}
+            className="w-full h-full border-0"
+            title="PDF Görüntüleyici"
+          />
+        )}
       </div>
     </div>
   );
