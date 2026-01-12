@@ -15,6 +15,12 @@ import { BranchInfoEditor } from './components/modules/BranchInfo/Editor';
 import { BranchInfoPreview } from './components/modules/BranchInfo/Preview';
 import { IPMContractEditor } from './components/modules/IPMContract/Editor';
 import { IPMContractPreview } from './components/modules/IPMContract/Preview';
+import { PermitsEditor } from './components/modules/Permits/Editor';
+import { PermitsPreview } from './components/modules/Permits/Preview';
+import { CertificatesEditor } from './components/modules/Certificates/Editor';
+import { CertificatesPreview } from './components/modules/Certificates/Preview';
+import { FumigationLicenseEditor } from './components/modules/FumigationLicense/Editor';
+import { FumigationLicensePreview } from './components/modules/FumigationLicense/Preview';
 import { DocumentAssignment } from './components/admin/DocumentAssignment';
 import { useCustomerData } from './hooks/useCustomerData';
 import type { ActiveTab, DocumentSettings } from './types';
@@ -61,6 +67,24 @@ export default function MentorModule() {
     yayinTarihi: '01.01.2024'
   });
 
+  const [settings31, setSettings31] = useState<DocumentSettings>({
+    dokumanNo: '3.1',
+    revizyonNo: '00',
+    yayinTarihi: '01.01.2024'
+  });
+
+  const [settings32, setSettings32] = useState<DocumentSettings>({
+    dokumanNo: '3.2',
+    revizyonNo: '00',
+    yayinTarihi: '01.01.2024'
+  });
+
+  const [settings33, setSettings33] = useState<DocumentSettings>({
+    dokumanNo: '3.3',
+    revizyonNo: '00',
+    yayinTarihi: '01.01.2024'
+  });
+
   const handlePrint = () => {
     window.print();
   };
@@ -83,6 +107,18 @@ export default function MentorModule() {
 
   const handleSettings21Change = (updates: Partial<DocumentSettings>) => {
     setSettings21(prev => ({ ...prev, ...updates }));
+  };
+
+  const handleSettings31Change = (updates: Partial<DocumentSettings>) => {
+    setSettings31(prev => ({ ...prev, ...updates }));
+  };
+
+  const handleSettings32Change = (updates: Partial<DocumentSettings>) => {
+    setSettings32(prev => ({ ...prev, ...updates }));
+  };
+
+  const handleSettings33Change = (updates: Partial<DocumentSettings>) => {
+    setSettings33(prev => ({ ...prev, ...updates }));
   };
 
   // Show login page if not authenticated
@@ -129,6 +165,9 @@ export default function MentorModule() {
               {activeTab === '1.2' && 'Müşteri Bilgileri Düzenle'}
               {activeTab === '1.3' && 'Şube Bilgileri Düzenle'}
               {activeTab === '2.1' && 'IPM Sözleşmesi Düzenle'}
+              {activeTab === '3.1' && 'İzin ve Ruhsatlar Düzenle'}
+              {activeTab === '3.2' && 'Sertifikalar Düzenle'}
+              {activeTab === '3.3' && 'Fumigasyon Ruhsatı Düzenle'}
               {/* Add other module titles */}
             </h2>
 
@@ -175,6 +214,36 @@ export default function MentorModule() {
                 loading={loading}
               />
             )}
+            {activeTab === '3.1' && (
+              <PermitsEditor
+                customers={customers}
+                selectedCustomerId={selectedCustomerId}
+                onCustomerSelect={setSelectedCustomerId}
+                settings={settings31}
+                onSettingsChange={handleSettings31Change}
+                loading={loading}
+              />
+            )}
+            {activeTab === '3.2' && (
+              <CertificatesEditor
+                customers={customers}
+                selectedCustomerId={selectedCustomerId}
+                onCustomerSelect={setSelectedCustomerId}
+                settings={settings32}
+                onSettingsChange={handleSettings32Change}
+                loading={loading}
+              />
+            )}
+            {activeTab === '3.3' && (
+              <FumigationLicenseEditor
+                customers={customers}
+                selectedCustomerId={selectedCustomerId}
+                onCustomerSelect={setSelectedCustomerId}
+                settings={settings33}
+                onSettingsChange={handleSettings33Change}
+                loading={loading}
+              />
+            )}
             {/* Add other module editors */}
           </div>
         )}
@@ -202,6 +271,15 @@ export default function MentorModule() {
           )}
           {activeTab === '2.1' && (
             <IPMContractPreview customerData={customerData} settings={settings21} />
+          )}
+          {activeTab === '3.1' && (
+            <PermitsPreview customerData={customerData} settings={settings31} selectedCustomerId={selectedCustomerId} />
+          )}
+          {activeTab === '3.2' && (
+            <CertificatesPreview customerData={customerData} settings={settings32} selectedCustomerId={selectedCustomerId} />
+          )}
+          {activeTab === '3.3' && (
+            <FumigationLicensePreview customerData={customerData} settings={settings33} selectedCustomerId={selectedCustomerId} />
           )}
           {/* Add other module previews */}
         </div>
