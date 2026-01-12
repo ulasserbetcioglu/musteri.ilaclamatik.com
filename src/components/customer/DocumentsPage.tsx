@@ -37,19 +37,19 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
     try {
       setLoading(true);
 
-      // MSDS ve Ruhsat sorgusu
+      // MSDS ve diğer belgeler için sorgu (Rapor fotoğrafları hariç her şey)
       let msdsQuery = supabase
         .from('documents')
         .select('*')
         .neq('document_type', 'report_photo');
 
-      // Rapor fotoğrafları sorgusu
+      // Sadece rapor fotoğrafları için sorgu
       let reportsQuery = supabase
         .from('documents')
         .select('*')
         .eq('document_type', 'report_photo');
 
-      // Kullanıcı tipine göre filtreleme ekle
+      // Müşteri veya şube bazlı filtreleme (Verilerin gelmesi için kritik kısım)
       if (user.customer_id) {
         msdsQuery = msdsQuery.eq('customer_id', user.customer_id);
         reportsQuery = reportsQuery.eq('customer_id', user.customer_id);
@@ -69,7 +69,7 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
       setMsdsDocuments(msdsRes.data || []);
       setReportPhotos(reportsRes.data || []);
     } catch (err) {
-      console.error('Error loading documents:', err);
+      console.error('Belgeler yüklenirken hata oluştu:', err);
     } finally {
       setLoading(false);
     }
@@ -91,7 +91,7 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
       case 'invoice': return 'Fatura';
       case 'agreement': return 'Anlaşma';
       case 'certificate': return 'Sertifika';
-      default: return type;
+      default: return 'Diğer';
     }
   };
 
@@ -112,74 +112,105 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src={LOGO_URL} alt="Logo" className="h-12" />
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">BELGE MERKEZİ</h1>
-              <p className="text-sm text-gray-500">{user.customer_name || user.branch_name || 'Hoş geldiniz'}</p>
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <img src={LOGO_URL} alt="Logo" className="h-12" />
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">RUHSAT & MSDS</h1>
+                <p className="text-sm text-gray-500">
+                  {user.customer_name || user.branch_name || 'Hoş geldiniz'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Calendar size={16} />
+                <span>{new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+              </div>
+              <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium">
+                <LogOut size={16} /> Çıkış Yap
+              </button>
             </div>
           </div>
-          <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium">
-            <LogOut size={16} /> Çıkış Yap
-          </button>
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 flex gap-2 border-t pt-2">
-          {['documents', 'visits', 'calendar', 'msds'].map((page) => (
-            <button
-              key={page}
-              onClick={() => onNavigate(page as any)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                page === 'msds' ? 'border-green-600 text-green-700 bg-green-50' : 'border-transparent text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              {page === 'msds' ? 'RUHSAT & MSDS' : page.toUpperCase()}
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex gap-2 border-t pt-2">
+            <button onClick={() => onNavigate('documents')} className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+              <FileText size={16} /> Belgeler
             </button>
-          ))}
+            <button onClick={() => onNavigate('visits')} className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+              <Calendar size={16} /> Ziyaretler
+            </button>
+            <button onClick={() => onNavigate('calendar')} className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+              <Calendar size={16} /> Takvim
+            </button>
+            <button onClick={() => onNavigate('msds')} className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 border-green-600 bg-green-50 text-green-700">
+              <Shield size={16} /> RUHSAT & MSDS
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-6 flex gap-4">
-          <button onClick={() => setActiveTab('msds')} className={`px-6 py-3 rounded-lg font-medium border transition-all ${activeTab === 'msds' ? 'bg-green-600 text-white border-green-600 shadow-md' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
-            <Shield size={20} className="inline mr-2" /> Tüm Belgeler ({msdsDocuments.length})
+          <button onClick={() => setActiveTab('msds')} className={`px-6 py-3 rounded-lg font-medium transition-colors ${activeTab === 'msds' ? 'bg-green-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 border'}`}>
+            <div className="flex items-center gap-2">
+              <Shield size={20} />
+              <span>Tüm Belgeler ({msdsDocuments.length})</span>
+            </div>
           </button>
-          <button onClick={() => setActiveTab('reports')} className={`px-6 py-3 rounded-lg font-medium border transition-all ${activeTab === 'reports' ? 'bg-green-600 text-white border-green-600 shadow-md' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
-            <Image size={20} className="inline mr-2" /> Rapor Görselleri ({reportPhotos.length})
+          <button onClick={() => setActiveTab('reports')} className={`px-6 py-3 rounded-lg font-medium transition-colors ${activeTab === 'reports' ? 'bg-green-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50 border'}`}>
+            <div className="flex items-center gap-2">
+              <Image size={20} />
+              <span>Faaliyet Rapor Görselleri ({reportPhotos.length})</span>
+            </div>
           </button>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center h-64 text-gray-500"><Loader2 className="animate-spin mr-2" /> Belgeler yükleniyor...</div>
+          <div className="flex items-center justify-center h-64 text-gray-600">
+            <Loader2 className="animate-spin mr-2" />
+            <span>Belgeler yükleniyor...</span>
+          </div>
         ) : (
           <>
             {activeTab === 'msds' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {msdsDocuments.length === 0 ? (
-                  <div className="col-span-full text-center p-12 bg-white rounded-lg border-2 border-dashed">Belge bulunamadı.</div>
+                  <div className="col-span-full bg-white rounded-lg shadow-md p-12 text-center">
+                    <Shield size={48} className="mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Henüz belge bulunmuyor</h3>
+                  </div>
                 ) : (
                   msdsDocuments.map((doc) => (
-                    <div key={doc.id} className="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition-shadow">
-                      <div className="flex items-center gap-2 mb-3">
-                        {getFileIcon(doc.file_type)}
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${getDocumentTypeBadgeColor(doc.document_type)}`}>
-                          {getDocumentTypeLabel(doc.document_type)}
-                        </span>
-                      </div>
-                      <h3 className="font-bold text-gray-900 mb-2 truncate">{doc.title}</h3>
-                      <div className="flex justify-between text-xs text-gray-500 mb-4">
-                        <span>{formatFileSize(doc.file_size)}</span>
-                        <span>{new Date(doc.created_at).toLocaleDateString('tr-TR')}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-                          <Eye size={16} /> Görüntüle
-                        </a>
-                        <a href={doc.file_url} download className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">
-                          <Download size={18} />
-                        </a>
+                    <div key={doc.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+                      <div className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              {getFileIcon(doc.file_type)}
+                              <span className={`text-xs font-semibold px-2 py-1 rounded ${getDocumentTypeBadgeColor(doc.document_type)}`}>
+                                {getDocumentTypeLabel(doc.document_type)}
+                              </span>
+                            </div>
+                            <h3 className="font-bold text-gray-900 mb-2 truncate">{doc.title}</h3>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                          <span>{formatFileSize(doc.file_size)}</span>
+                          <span>{new Date(doc.created_at).toLocaleDateString('tr-TR')}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium">
+                            <Eye size={16} /> Görüntüle
+                          </a>
+                          <a href={doc.file_url} download className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-medium">
+                            <Download size={16} />
+                          </a>
+                        </div>
                       </div>
                     </div>
                   ))
@@ -188,15 +219,21 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
             )}
 
             {activeTab === 'reports' && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {reportPhotos.length === 0 ? (
-                  <div className="col-span-full text-center p-12 bg-white rounded-lg border-2 border-dashed">Görsel bulunamadı.</div>
+                  <div className="col-span-full bg-white rounded-lg shadow-md p-12 text-center">
+                    <Image size={48} className="mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Henüz rapor görseli bulunmuyor</h3>
+                  </div>
                 ) : (
                   reportPhotos.map((photo) => (
-                    <div key={photo.id} className="group relative aspect-square bg-gray-100 rounded-xl overflow-hidden cursor-pointer border" onClick={() => setSelectedImage(photo)}>
-                      <img src={photo.file_url} alt={photo.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                        <p className="text-white text-xs truncate">{photo.title}</p>
+                    <div key={photo.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden cursor-pointer" onClick={() => setSelectedImage(photo)}>
+                      <div className="aspect-square bg-gray-100 relative">
+                        <img src={photo.file_url} alt={photo.title} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="p-3">
+                        <p className="text-sm font-medium text-gray-900 truncate">{photo.title}</p>
+                        <p className="text-xs text-gray-500 mt-1">{new Date(photo.created_at).toLocaleDateString('tr-TR')}</p>
                       </div>
                     </div>
                   ))
@@ -208,15 +245,22 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
       </div>
 
       {selectedImage && (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setSelectedImage(null)}>
-          <button className="absolute top-6 right-6 text-white"><X size={32} /></button>
-          <div className="max-w-5xl w-full" onClick={e => e.stopPropagation()}>
-            <img src={selectedImage.file_url} className="w-full max-h-[80vh] object-contain rounded-lg" />
-            <div className="mt-4 bg-white p-4 rounded-xl flex justify-between items-center">
-              <h3 className="font-bold">{selectedImage.title}</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4" onClick={() => setSelectedImage(null)}>
+          <div className="relative max-w-5xl w-full max-h-full" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setSelectedImage(null)} className="absolute -top-10 right-0 text-white hover:text-gray-300">
+              <X size={32} />
+            </button>
+            <img src={selectedImage.file_url} alt={selectedImage.title} className="max-w-full max-h-[85vh] mx-auto rounded-lg shadow-2xl" />
+            <div className="mt-4 bg-white rounded-lg p-4">
+              <h3 className="font-bold text-gray-900 mb-1">{selectedImage.title}</h3>
+              {selectedImage.description && <p className="text-sm text-gray-600 mb-3">{selectedImage.description}</p>}
               <div className="flex gap-2">
-                <a href={selectedImage.file_url} target="_blank" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">Tam Ekran</a>
-                <a href={selectedImage.file_url} download className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">İndir</a>
+                <a href={selectedImage.file_url} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium">
+                  <Eye size={16} /> Yeni Sekmede Aç
+                </a>
+                <a href={selectedImage.file_url} download className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm font-medium">
+                  <Download size={16} /> İndir
+                </a>
               </div>
             </div>
           </div>
