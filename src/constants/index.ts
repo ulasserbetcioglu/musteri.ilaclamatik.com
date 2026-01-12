@@ -23,7 +23,8 @@ export const MODULE_TITLES = {
   '5.4': 'BİYOSİDAL ÜRÜN RUHSATLARI, MSDS VE ETİKET BİLGİLERİ',
   '5.5': 'BİYOSİDAL ÜRÜN GRUPLARI LİSTESİ',
   '6.1': 'ATIK İMHA BELGESİ',
-  '6.2': 'FUMİGASYON RUHSATI'
+  '6.2': 'FUMİGASYON RUHSATI',
+  '6.4': 'ZARARLI KONTROLÜ ACİL EYLEM PLANI'
 };
 
 export const NAVIGATION_ITEMS = [
@@ -47,7 +48,8 @@ export const NAVIGATION_ITEMS = [
   { id: '5.4', title: 'Ürün Ruhsat & MSDS', icon: 'FileImage' },
   { id: '5.5', title: 'Ürün Grupları', icon: 'Package' },
   { id: '6.1', title: 'Atık İmha Belgesi', icon: 'Trash2' },
-  { id: '6.2', title: 'Fumigasyon Ruhsatı', icon: 'Zap' }
+  { id: '6.2', title: 'Fumigasyon Ruhsatı', icon: 'Zap' },
+  { id: '6.4', title: 'Acil Eylem Planı', icon: 'AlertTriangle' }
 ] as const;
 
 export const ICON_COMPONENTS = {
@@ -70,7 +72,9 @@ export const ICON_COMPONENTS = {
   FileImage: 'FileImage',
   Package: 'Package',
   Trash2: 'Trash2',
-  Zap: 'Zap'
+  Zap: 'Zap',
+  AlertTriangle: 'AlertTriangle',
+  UserCheck: 'UserCheck'
 } as const;
 
 export const DEFAULT_GENERATOR = {

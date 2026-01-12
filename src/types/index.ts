@@ -207,6 +207,22 @@ export interface FumigationLicense {
   kisitlamalar: string;
 }
 
+export interface ContingencyPlanEntry {
+  id: number;
+  no: string;
+  hazard: string;
+  detectionMethod: string;
+  criticalLimit: string;
+  responsible: string;
+  correctiveAction: string;
+  record: string;
+}
+
+export interface ContingencyPlan {
+  date: string;
+  entries: ContingencyPlanEntry[];
+}
+
 export type ActiveTab =
   | 'home'
   | '0.1'
@@ -215,7 +231,7 @@ export type ActiveTab =
   | '3.1' | '3.2' | '3.3'
   | '4.1' | '4.2' | '4.3a' | '4.3b' | '4.3c' | '4.3d'
   | '5.1' | '5.2' | '5.3' | '5.4' | '5.5'
-  | '6.1' | '6.2';
+  | '6.1' | '6.2' | '6.4';
 
 export interface ModuleData {
   customerData: CustomerData;
@@ -237,6 +253,7 @@ export interface ModuleData {
   emergencyContacts: EmergencyContact[];
   wasteDisposals: WasteDisposal[];
   fumigationLicense: FumigationLicense[];
+  contingencyPlan: ContingencyPlan;
   krokiImage: string | null;
   generator: Generator;
 }

@@ -1,7 +1,7 @@
-import { 
+import {
   Home, Building2, Store, Ligature as FileSignature, Award, Users, Map, ClipboardList, Beaker, Printer,
   FileText, Shield, UserCheck, TrendingUp, ShieldCheck, MessageSquare, Phone, Trash2, Zap,
-  FileCheck, CreditCard, FileImage, Package
+  FileCheck, CreditCard, FileImage, Package, AlertTriangle
 } from 'lucide-react';
 import { LOGO_URL, BRAND_GREEN, NAVIGATION_ITEMS } from '../../constants';
 import type { ActiveTab } from '../../types';
@@ -42,7 +42,8 @@ const iconMap = {
   FileCheck,
   CreditCard,
   FileImage,
-  Package
+  Package,
+  AlertTriangle
 };
 
 export function Sidebar({ activeTab, onTabChange, onPrint, user, onLogout }: SidebarProps) {

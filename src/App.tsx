@@ -27,6 +27,8 @@ import { WasteDisposalEditor } from './components/modules/WasteDisposal/Editor';
 import { WasteDisposalPreview } from './components/modules/WasteDisposal/Preview';
 import { InsurancePolicyEditor } from './components/modules/InsurancePolicy/Editor';
 import { InsurancePolicyPreview } from './components/modules/InsurancePolicy/Preview';
+import { ContingencyPlanEditor } from './components/modules/ContingencyPlan/Editor';
+import { ContingencyPlanPreview } from './components/modules/ContingencyPlan/Preview';
 import { DocumentAssignment } from './components/admin/DocumentAssignment';
 import { useCustomerData } from './hooks/useCustomerData';
 import type { ActiveTab, DocumentSettings } from './types';
@@ -109,6 +111,12 @@ export default function MentorModule() {
     yayinTarihi: '01.01.2024'
   });
 
+  const [settings64, setSettings64] = useState<DocumentSettings>({
+    dokumanNo: '6.4',
+    revizyonNo: '00',
+    yayinTarihi: '01.01.2024'
+  });
+
   const handlePrint = () => {
     window.print();
   };
@@ -155,6 +163,10 @@ export default function MentorModule() {
 
   const handleSettings61Change = (updates: Partial<DocumentSettings>) => {
     setSettings61(prev => ({ ...prev, ...updates }));
+  };
+
+  const handleSettings64Change = (updates: Partial<DocumentSettings>) => {
+    setSettings64(prev => ({ ...prev, ...updates }));
   };
 
   // Show login page if not authenticated
@@ -288,6 +300,13 @@ export default function MentorModule() {
                 onSettingsChange={handleSettings61Change}
               />
             )}
+            {activeTab === '6.4' && (
+              <ContingencyPlanEditor
+                settings={settings64}
+                onSettingsChange={handleSettings64Change}
+                customerId={selectedCustomerId}
+              />
+            )}
           </div>
         )}
 
@@ -331,7 +350,18 @@ export default function MentorModule() {
             <ProductMSDSPreview settings={settings54} />
           )}
           {activeTab === '6.1' && (
-            <WasteDisposalPreview settings={settings61} />
+            <WasteDisposalPreview
+              settings={settings61}
+              customerName={customerData.ticariUnvan}
+              customerId={selectedCustomerId}
+            />
+          )}
+          {activeTab === '6.4' && (
+            <ContingencyPlanPreview
+              settings={settings64}
+              customerName={customerData.ticariUnvan}
+              customerId={selectedCustomerId}
+            />
           )}
         </div>
       </main>
