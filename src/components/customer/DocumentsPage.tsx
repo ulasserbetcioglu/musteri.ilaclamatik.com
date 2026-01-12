@@ -39,38 +39,48 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
     try {
       setLoading(true);
 
-      // 1. Sorgu: MSDS, Ruhsat, Sözleşme gibi tüm evraklar (Rapor fotoğrafları hariç)
-      let msdsQuery = supabase
+      const { data: msds, error: msdsError } = await supabase
         .from('documents')
         .select('*')
-        .neq('document_type', 'report_photo');
+        .neq('document_type', 'report_photo')
+        .in('entity_type', ['public', 'general'])
+        .order('created_at', { ascending: false });
 
-      // 2. Sorgu: Faaliyet raporu fotoğrafları
-      let reportsQuery = supabase
-        .from('documents')
-        .select('*')
-        .eq('document_type', 'report_photo');
+      if (msdsError) throw msdsError;
 
-      // Kullanıcının kimliğine göre filtreleme (Görünürlük için en kritik adım)
+      let visitIds: string[] = [];
       if (user.customer_id) {
-        msdsQuery = msdsQuery.eq('customer_id', user.customer_id);
-        reportsQuery = reportsQuery.eq('customer_id', user.customer_id);
+        const { data: visits } = await supabase
+          .from('visits')
+          .select('id')
+          .eq('customer_id', user.customer_id);
+
+        visitIds = visits?.map(v => v.id) || [];
       } else if (user.branch_id) {
-        msdsQuery = msdsQuery.eq('branch_id', user.branch_id);
-        reportsQuery = reportsQuery.eq('branch_id', user.branch_id);
+        const { data: visits } = await supabase
+          .from('visits')
+          .select('id')
+          .eq('branch_id', user.branch_id);
+
+        visitIds = visits?.map(v => v.id) || [];
       }
 
-      // Verileri paralel olarak çek
-      const [msdsRes, reportsRes] = await Promise.all([
-        msdsQuery.order('created_at', { ascending: false }),
-        reportsQuery.order('created_at', { ascending: false })
-      ]);
+      let reportPhotos: Document[] = [];
+      if (visitIds.length > 0) {
+        const { data: reports, error: reportsError } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('document_type', 'report_photo')
+          .eq('entity_type', 'visit')
+          .in('entity_id', visitIds)
+          .order('created_at', { ascending: false });
 
-      if (msdsRes.error) throw msdsRes.error;
-      if (reportsRes.error) throw reportsRes.error;
+        if (reportsError) throw reportsError;
+        reportPhotos = reports || [];
+      }
 
-      setMsdsDocuments(msdsRes.data || []);
-      setReportPhotos(reportsRes.data || []);
+      setMsdsDocuments(msds || []);
+      setReportPhotos(reportPhotos);
     } catch (err) {
       console.error('Belgeler yüklenirken hata oluştu:', err);
     } finally {
@@ -91,6 +101,9 @@ export function DocumentsPage({ user, onLogout, onNavigate }: DocumentsPageProps
       msds: 'MSDS',
       license: 'Ruhsat',
       ruhsat: 'Ruhsat',
+      biocidal: 'Biyosidal Ürün Belgesi',
+      quality: 'Kalite Belgesi',
+      other: 'Diğer Belge',
       report_photo: 'Rapor Fotoğrafı',
       contract: 'Sözleşme',
       certificate: 'Sertifika'
